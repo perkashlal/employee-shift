@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  build-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    services:
+      mongo:
+        image: mongo:6.0
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd="mongosh --eval 'db.adminCommand(\"ping\")'" 
+          --health-interval=10s --health-timeout=5s --health-retries=5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: maven
+
+      - name: Cache Maven repository
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-m2-
+
+      - name: Build and run tests
+        run: mvn -B -DskipTests=false clean verify
+
+      - name: Generate JaCoCo report
+        run: mvn -B jacoco:report
+
+      - name: SonarCloud analysis
+        if: secrets.SONAR_TOKEN != ''
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          mvn -B -DskipTests=true sonar:sonar \
+            -Dsonar.projectKey=YOUR_ORG_YOUR_PROJECT_KEY \
+            -Dsonar.host.url=https://sonarcloud.io \
+            -Dsonar.login=${{ secrets.SONAR_TOKEN }}
+
+  mutation:
+    name: Mutation Testing (PIT) — run on main only
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    needs: build-test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Run PIT mutation testing (focused on service layer)
+        # PIT can be slow. We limit targetClasses to your business logic.
+        run: mvn -DskipTests=false org.pitest:pitest-maven:mutationCoverage \
+               -Dpit.targetClasses=it.unifi.attsw.service.* \
+               -Dwt='2' \
+               -Dmutators=DEFAULTS
