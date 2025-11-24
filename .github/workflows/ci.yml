@@ -49,7 +49,7 @@ jobs:
         run: mvn -B jacoco:report
 
       - name: SonarCloud analysis
-        if: secrets.SONAR_TOKEN != ''
+        if: ${{ secrets.SONAR_TOKEN }}
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
@@ -74,7 +74,6 @@ jobs:
           java-version: 17
 
       - name: Run PIT mutation testing (focused on service layer)
-        # PIT can be slow. We limit targetClasses to your business logic.
         run: mvn -DskipTests=false org.pitest:pitest-maven:mutationCoverage \
                -Dpit.targetClasses=it.unifi.attsw.service.* \
                -Dwt='2' \
