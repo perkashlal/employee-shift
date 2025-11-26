@@ -51,7 +51,7 @@ jobs:
 
       - name: SonarCloud analysis (runs only if SONAR_TOKEN present)
         env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.c37c96bf94cb9acab214bedc60f38ee8f720fb1e }}
         run: |
           if [ -n "${SONAR_TOKEN}" ]; then
             echo "SONAR_TOKEN present — running SonarCloud analysis"
