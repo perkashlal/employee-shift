@@ -49,16 +49,20 @@ jobs:
       - name: Generate JaCoCo report
         run: mvn -B jacoco:report
 
-      - name: SonarCloud analysis
-        if: ${{ secrets.SONAR_TOKEN }}
+      - name: SonarCloud analysis (runs only if SONAR_TOKEN present)
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
-          mvn -B -DskipTests=true sonar:sonar \
-            -Dsonar.projectKey=perkashlal_employee-shift \
-            -Dsonar.organization=perkashlal \
-            -Dsonar.host.url=https://sonarcloud.io \
-            -Dsonar.login=${{ secrets.SONAR_TOKEN }}
+          if [ -n "${SONAR_TOKEN}" ]; then
+            echo "SONAR_TOKEN present — running SonarCloud analysis"
+            mvn -B -DskipTests=true sonar:sonar \
+              -Dsonar.projectKey=perkashlal_employee-shift \
+              -Dsonar.organization=perkashlal \
+              -Dsonar.host.url=https://sonarcloud.io \
+              -Dsonar.login=${SONAR_TOKEN}
+          else
+            echo "SONAR_TOKEN not set — skipping SonarCloud analysis"
+          fi
 
   mutation:
     name: Mutation Testing (PIT) — run on main only
