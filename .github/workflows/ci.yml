@@ -78,5 +78,5 @@ jobs:
       - name: Run PIT mutation testing (focused on service layer)
         run: mvn -DskipTests=false org.pitest:pitest-maven:mutationCoverage \
                -Dpit.targetClasses=it.unifi.attsw.service.* \
-               -Dwt='2' \
+               -Dwt=2 \
                -Dmutators=DEFAULTS
