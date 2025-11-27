@@ -1,36 +1,53 @@
 package it.unifi.attsw.model;
-import java.time.LocalDate;
-import java.time.LocalTime;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.util.Objects;
+import java.util.UUID;
 
-public class Shift {
-    private String shiftId;
-    private LocalDate date;
-    private LocalTime startTime;
-    private LocalTime endTime;
-    private String notes;
+public final class Shift {
 
-    public Shift() { }
+    private final String id;
+    private final LocalDateTime start;
+    private final LocalDateTime end;
+    private final String note;
 
-    public Shift(String shiftId, LocalDate date, LocalTime startTime, LocalTime endTime, String notes) {
-        this.shiftId = shiftId;
-        this.date = date;
-        this.startTime = startTime;
-        this.endTime = endTime;
-        this.notes = notes;
+    public Shift(LocalDateTime start, LocalDateTime end) {
+        this(start, end, null);
     }
 
-    public String getShiftId() { return shiftId; }
-    public void setShiftId(String shiftId) { this.shiftId = shiftId; }
+    public Shift(LocalDateTime start, LocalDateTime end, String note) {
+        Objects.requireNonNull(start, "start must not be null");
+        Objects.requireNonNull(end, "end must not be null");
 
-    public LocalDate getDate() { return date; }
-    public void setDate(LocalDate date) { this.date = date; }
+        if (!end.isAfter(start)) {
+            throw new IllegalArgumentException("Shift end must be after start");
+        }
 
-    public LocalTime getStartTime() { return startTime; }
-    public void setStartTime(LocalTime startTime) { this.startTime = startTime; }
+        this.id = UUID.randomUUID().toString();
+        this.start = start;
+        this.end = end;
+        this.note = note == null ? "" : note;
+    }
 
-    public LocalTime getEndTime() { return endTime; }
-    public void setEndTime(LocalTime endTime) { this.endTime = endTime; }
+    public String getId() { return id; }
+    public LocalDateTime getStart() { return start; }
+    public LocalDateTime getEnd() { return end; }
+    public String getNote() { return note; }
 
-    public String getNotes() { return notes; }
-    public void setNotes(String notes) { this.notes = notes; }
+    public Duration duration() { return Duration.between(start, end); }
+
+    public boolean overlaps(Shift other) {
+        Objects.requireNonNull(other, "other must not be null");
+        return this.start.isBefore(other.end) && this.end.isAfter(other.start);
+    }
+
+    @Override
+    public String toString() {
+        return "Shift{" +
+                "id='" + id + '\'' +
+                ", start=" + start +
+                ", end=" + end +
+                ", note='" + note + '\'' +
+                '}';
+    }
 }
