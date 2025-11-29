@@ -1,4 +1,4 @@
-package it.unifi.attsw.model;
+package it.unifi.attsw.employee_shift_scheduler;
 
 import org.junit.jupiter.api.Test;
 
@@ -9,9 +9,9 @@ import static org.junit.jupiter.api.Assertions.*;
 class ShiftTest {
 
     @Test
-    void createShift_withEndBeforeStart_shouldThrow() {
-        LocalDateTime start = LocalDateTime.of(2025, 11, 26, 10, 0);
-        LocalDateTime end = LocalDateTime.of(2025, 11, 26, 9, 0);
+    void validateStartEnd_shouldThrow() {
+        LocalDateTime start = LocalDateTime.of(2025,11,26,10,0);
+        LocalDateTime end = LocalDateTime.of(2025,11,26,10,0);
         assertThrows(IllegalArgumentException.class, () -> new Shift(start, end));
     }
 
