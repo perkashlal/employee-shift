@@ -1,46 +1,26 @@
 package it.unifi.attsw.model;
 
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class InMemoryEmployeeRepository implements EmployeeRepository {
 
-    private final Map<String, Employee> store = new ConcurrentHashMap<>();
+    private final Map<String, Employee> storage = new HashMap<>();
 
     @Override
-    public Employee save(Employee employee) {
-        Objects.requireNonNull(employee, "employee");
-        store.put(employee.getEmployeeId(), employee);
-        return employee;
+    public void save(Employee e) {
+        storage.put(e.getEmployeeId(), e);
     }
 
     @Override
-    public Optional<Employee> findById(String employeeId) {
-        return Optional.ofNullable(store.get(employeeId));
+    public Employee findById(String id) {
+        return storage.get(id);
     }
 
     @Override
     public List<Employee> findAll() {
-        return new ArrayList<>(store.values());
-    }
-
-    @Override
-    public boolean deleteById(String employeeId) {
-        return store.remove(employeeId) != null;
-    }
-
-    @Override
-    public void addShiftToEmployee(String employeeId, Shift shift) {
-        Objects.requireNonNull(shift, "shift");
-        Employee emp = store.get(employeeId);
-        if (emp == null) throw new IllegalArgumentException("Employee not found: " + employeeId);
-        emp.addShift(shift); // will throw if overlap
-    }
-
-    @Override
-    public boolean removeShiftFromEmployee(String employeeId, String shiftId) {
-        Employee emp = store.get(employeeId);
-        if (emp == null) return false;
-        return emp.removeShiftById(shiftId);
+        return new ArrayList<>(storage.values());
     }
 }
