@@ -9,12 +9,12 @@
   <version>0.1.0-SNAPSHOT</version>
   <packaging>jar</packaging>
 
-  <!-- Use Spring Boot parent for dependency management (we'll use boot later) -->
+  <!-- keep your Spring Boot parent -->
   <parent>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-parent</artifactId>
     <version>3.1.4</version>
-    <relativePath/> <!-- lookup parent from repository -->
+    <relativePath/>
   </parent>
 
   <properties>
@@ -26,23 +26,23 @@
   </properties>
 
   <dependencies>
-    <!-- Spring Boot starters (web + mongo) -->
+    <!-- Your original app dependencies -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-web</artifactId>
     </dependency>
+
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-data-mongodb</artifactId>
     </dependency>
 
-    <!-- Testing (spring-boot-starter-test includes JUnit5) -->
+    <!-- spring-boot-starter-test already includes JUnit, AssertJ core, etc. -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-test</artifactId>
       <scope>test</scope>
       <exclusions>
-        <!-- keep junit-jupiter provided by starter-test; exclude vintage -->
         <exclusion>
           <groupId>org.junit.vintage</groupId>
           <artifactId>junit-vintage-engine</artifactId>
@@ -50,7 +50,7 @@
       </exclusions>
     </dependency>
 
-    <!-- Mockito explicit (useful in tests) -->
+    <!-- Mockito (explicit) -->
     <dependency>
       <groupId>org.mockito</groupId>
       <artifactId>mockito-core</artifactId>
@@ -58,7 +58,7 @@
       <scope>test</scope>
     </dependency>
 
-    <!-- Testcontainers for integration tests with MongoDB -->
+    <!-- Testcontainers (Mongo) -->
     <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>mongodb</artifactId>
@@ -66,18 +66,33 @@
       <scope>test</scope>
     </dependency>
 
-    <!-- AssertJ Swing for GUI testing (test scope) -->
     <dependency>
       <groupId>org.assertj</groupId>
       <artifactId>assertj-swing-junit</artifactId>
-      <version>3.17.1</version>
+      <version>3.9.2</version>
+      <scope>test</scope>
+    </dependency>
+
+    <!-- AssertJ core (explicit) -->
+    <dependency>
+      <groupId>org.assertj</groupId>
+      <artifactId>assertj-core</artifactId>
+      <version>3.24.2</version>
+      <scope>test</scope>
+    </dependency>
+
+    <!-- JUnit Jupiter engine (explicit) -->
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-engine</artifactId>
+      <version>5.9.3</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
 
   <build>
     <plugins>
-      <!-- Spring Boot plugin (useful to run the app) -->
+      <!-- Spring Boot plugin -->
       <plugin>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
@@ -93,7 +108,24 @@
         </configuration>
       </plugin>
 
-      <!-- JaCoCo for code coverage -->
+      <!-- Surefire for tests (JUnit5) -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>3.0.0-M8</version>
+        <configuration>
+          <useModulePath>false</useModulePath>
+          <forkCount>1</forkCount>
+          <reuseForks>true</reuseForks>
+          <!-- When running GUI tests locally, ensure headless=false.
+               On CI use xvfb or disable GUI tests via a profile (I can add that). -->
+          <systemPropertyVariables>
+            <java.awt.headless>false</java.awt.headless>
+          </systemPropertyVariables>
+        </configuration>
+      </plugin>
+
+      <!-- JaCoCo (coverage) -->
       <plugin>
         <groupId>org.jacoco</groupId>
         <artifactId>jacoco-maven-plugin</artifactId>
@@ -101,16 +133,12 @@
         <executions>
           <execution>
             <id>prepare-agent</id>
-            <goals>
-              <goal>prepare-agent</goal>
-            </goals>
+            <goals><goal>prepare-agent</goal></goals>
           </execution>
           <execution>
             <id>report</id>
             <phase>test</phase>
-            <goals>
-              <goal>report</goal>
-            </goals>
+            <goals><goal>report</goal></goals>
           </execution>
         </executions>
       </plugin>
