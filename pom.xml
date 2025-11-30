@@ -9,7 +9,6 @@
   <version>0.1.0-SNAPSHOT</version>
   <packaging>jar</packaging>
 
-  <!-- keep your Spring Boot parent -->
   <parent>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-parent</artifactId>
@@ -26,18 +25,17 @@
   </properties>
 
   <dependencies>
-    <!-- Your original app dependencies -->
+    <!-- Application -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-web</artifactId>
     </dependency>
-
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-data-mongodb</artifactId>
     </dependency>
 
-    <!-- spring-boot-starter-test already includes JUnit, AssertJ core, etc. -->
+    <!-- Testing: spring boot starter test (JUnit + some assertj) -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-test</artifactId>
@@ -58,7 +56,7 @@
       <scope>test</scope>
     </dependency>
 
-    <!-- Testcontainers (Mongo) -->
+    <!-- Testcontainers for MongoDB integration -->
     <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>mongodb</artifactId>
@@ -66,6 +64,7 @@
       <scope>test</scope>
     </dependency>
 
+    <!-- AssertJ-Swing (GUI testing) -->
     <dependency>
       <groupId>org.assertj</groupId>
       <artifactId>assertj-swing-junit</artifactId>
@@ -73,15 +72,15 @@
       <scope>test</scope>
     </dependency>
 
-    <!-- AssertJ core (explicit) -->
+    <!-- Pin AssertJ Core to a version compatible with AssertJ-Swing 3.9.2 -->
     <dependency>
       <groupId>org.assertj</groupId>
       <artifactId>assertj-core</artifactId>
-      <version>3.24.2</version>
+      <version>3.11.0</version>
       <scope>test</scope>
     </dependency>
 
-    <!-- JUnit Jupiter engine (explicit) -->
+    <!-- JUnit Jupiter engine explicit -->
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter-engine</artifactId>
@@ -108,7 +107,7 @@
         </configuration>
       </plugin>
 
-      <!-- Surefire for tests (JUnit5) -->
+      <!-- Surefire (JUnit5) -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
@@ -117,15 +116,13 @@
           <useModulePath>false</useModulePath>
           <forkCount>1</forkCount>
           <reuseForks>true</reuseForks>
-          <!-- When running GUI tests locally, ensure headless=false.
-               On CI use xvfb or disable GUI tests via a profile (I can add that). -->
           <systemPropertyVariables>
             <java.awt.headless>false</java.awt.headless>
           </systemPropertyVariables>
         </configuration>
       </plugin>
 
-      <!-- JaCoCo (coverage) -->
+      <!-- JaCoCo -->
       <plugin>
         <groupId>org.jacoco</groupId>
         <artifactId>jacoco-maven-plugin</artifactId>

@@ -3,10 +3,14 @@ package it.unifi.attsw.employee_shift_scheduler;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.ZoneOffset;
+import java.time.ZoneId;
 import java.util.Objects;
 import java.util.UUID;
 
+/**
+ * Shift value object.
+ * Provides constructors accepting LocalDateTime (tests use LocalDateTime).
+ */
 public class Shift {
 
     private final String id;
@@ -14,52 +18,44 @@ public class Shift {
     private final Instant end;
     private final String notes;
 
-    // Primary constructor: accepts Instant values
     public Shift(String id, Instant start, Instant end, String notes) {
-        if (id == null || id.isBlank()) throw new IllegalArgumentException("id must be provided");
-        validateStartEnd(start, end);
+        if (id == null || id.isBlank()) throw new IllegalArgumentException("id required");
+        validate(start, end);
         this.id = id;
         this.start = start;
         this.end = end;
         this.notes = notes == null ? "" : notes;
     }
 
-    // Convenience: Instant + no notes
     public Shift(String id, Instant start, Instant end) {
         this(id, start, end, "");
     }
 
-    // Convenience: generate id
-    public Shift(Instant start, Instant end, String notes) {
-        this(UUID.randomUUID().toString(), start, end, notes);
-    }
-
     public Shift(Instant start, Instant end) {
-        this(start, end, "");
+        this(UUID.randomUUID().toString(), start, end, "");
     }
 
-    // NEW: constructors that accept LocalDateTime (tests use these)
-    // Convert LocalDateTime -> Instant using UTC offset
+    // LocalDateTime constructors (use system default zone)
     public Shift(String id, LocalDateTime startLocal, LocalDateTime endLocal, String notes) {
-        this(id, toInstantUtc(startLocal), toInstantUtc(endLocal), notes);
+        this(id, toInstant(startLocal), toInstant(endLocal), notes);
     }
 
     public Shift(LocalDateTime startLocal, LocalDateTime endLocal, String notes) {
-        this(UUID.randomUUID().toString(), startLocal, endLocal, notes);
+        this(UUID.randomUUID().toString(), toInstant(startLocal), toInstant(endLocal), notes);
     }
 
     public Shift(LocalDateTime startLocal, LocalDateTime endLocal) {
         this(startLocal, endLocal, "");
     }
 
-    private static Instant toInstantUtc(LocalDateTime ldt) {
-        if (ldt == null) throw new IllegalArgumentException("LocalDateTime must not be null");
-        return ldt.toInstant(ZoneOffset.UTC);
+    private static Instant toInstant(LocalDateTime ldt) {
+        Objects.requireNonNull(ldt, "LocalDateTime required");
+        return ldt.atZone(ZoneId.systemDefault()).toInstant();
     }
 
-    private static void validateStartEnd(Instant start, Instant end) {
-        if (start == null || end == null) throw new IllegalArgumentException("start/end required");
-        if (!end.isAfter(start)) throw new IllegalArgumentException("end must be after start");
+    private static void validate(Instant s, Instant e) {
+        if (s == null || e == null) throw new IllegalArgumentException("start/end required");
+        if (!e.isAfter(s)) throw new IllegalArgumentException("end must be after start");
     }
 
     public String getId() { return id; }
@@ -78,8 +74,8 @@ public class Shift {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (!(o instanceof Shift)) return false;
-        Shift shift = (Shift) o;
-        return id.equals(shift.id) && start.equals(shift.start) && end.equals(shift.end);
+        Shift s = (Shift) o;
+        return id.equals(s.id) && start.equals(s.start) && end.equals(s.end);
     }
 
     @Override
@@ -89,6 +85,6 @@ public class Shift {
 
     @Override
     public String toString() {
-        return "Shift{" + "id='" + id + '\'' + ", start=" + start + ", end=" + end + '}';
+        return "Shift{" + id + " " + start + "->" + end + "}";
     }
 }

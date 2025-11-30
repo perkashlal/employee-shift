@@ -7,18 +7,16 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Table model backing the JTable inside the SchedulerFrame.
+ * Table model with UTC-labelled headers (tests expect "(UTC)").
  */
 public class ShiftsTableModel extends AbstractTableModel {
 
     private final List<Shift> shifts = new ArrayList<>();
-    private final String[] columns = {"Shift ID", "Start", "End"};
+    private final String[] columns = {"Shift ID", "Start (UTC)", "End (UTC)"};
 
     public void setShifts(List<Shift> newShifts) {
         shifts.clear();
-        if (newShifts != null)
-            shifts.addAll(newShifts);
-
+        if (newShifts != null) shifts.addAll(newShifts);
         fireTableDataChanged();
     }
 
@@ -33,14 +31,13 @@ public class ShiftsTableModel extends AbstractTableModel {
     }
 
     @Override
-    public String getColumnName(int index) {
-        return columns[index];
+    public String getColumnName(int column) {
+        return columns[column];
     }
 
     @Override
     public Object getValueAt(int rowIndex, int columnIndex) {
         Shift s = shifts.get(rowIndex);
-
         switch (columnIndex) {
             case 0: return s.getId();
             case 1: return s.getStart().toString();
