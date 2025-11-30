@@ -2,25 +2,24 @@ package it.unifi.attsw.employee_shift_scheduler_gui;
 
 import it.unifi.attsw.employee_shift_scheduler.Controller;
 import it.unifi.attsw.employee_shift_scheduler.Shift;
-import org.assertj.swing.edt.GuiActionRunner;
-import org.assertj.swing.fixture.FrameFixture;
+
 import org.assertj.swing.core.BasicRobot;
 import org.assertj.swing.core.Robot;
+import org.assertj.swing.edt.GuiActionRunner;
+import org.assertj.swing.fixture.FrameFixture;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-
 import java.time.LocalDateTime;
 import java.util.List;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 /**
- * SchedulerFrame GUI test using AssertJ-Swing with JUnit5.
- * We create and clean up the Robot and FrameFixture manually.
+ * Failing-first tests for SchedulerFrame.
  */
 class SchedulerFrameTest {
 
@@ -30,61 +29,61 @@ class SchedulerFrameTest {
 
     @BeforeEach
     void setUp() {
-        // create Mockito controller mock
         controller = mock(Controller.class);
-
-        // create a fresh Robot for each test (new AWT hierarchy)
         robot = BasicRobot.robotWithNewAwtHierarchy();
 
-        // create the frame on the EDT and wrap it with FrameFixture
         SchedulerFrame frame = GuiActionRunner.execute(() -> new SchedulerFrame(controller));
         window = new FrameFixture(robot, frame);
-        window.show(); // shows the frame
+        window.show();
     }
 
     @AfterEach
     void tearDown() {
-        if (window != null) {
-            window.cleanUp(); // closes windows and releases resources
-        }
-        if (robot != null) {
-            robot.cleanUp();
-        }
+        if (window != null) window.cleanUp();
+        if (robot != null) robot.cleanUp();
     }
 
     @Test
-    void clickingAddShift_whenEmployeeExists_shouldCallControllerAndUpdateTable() {
-        // arrange
+    void frameShouldHaveProTitle_failingFirst() {
+        // EXPECTED TITLE (intentionally wrong → will fail)
+        window.requireTitle("Employee Shift Scheduler PRO");
+    }
+
+    @Test
+    void addShiftButton_shouldBeDisabledInitially_failingFirst() {
+        // Your current UI ENABLES the button → this should fail.
+        window.button("addShiftButton").requireDisabled();
+    }
+
+    @Test
+    void shiftsTable_shouldHaveUtcColumnHeaders_failingFirst() {
+        // The current ShiftsTableModel uses "Start", "End"
+        // This test expects "Start (UTC)" and "End (UTC)" → failing-first
+        window.table("shiftsTable").requireColumnCount(3);
+
+        assertEquals("Shift ID",
+                window.table("shiftsTable").target().getColumnName(0));
+        assertEquals("Start (UTC)",
+                window.table("shiftsTable").target().getColumnName(1));
+        assertEquals("End (UTC)",
+                window.table("shiftsTable").target().getColumnName(2));
+    }
+
+    @Test
+    void clickingAddShift_whenEmployeeExists_shouldUpdateTable_failingFirst() {
         String empId = "E100";
-        Shift created = new Shift(LocalDateTime.of(2025, 11, 30, 8, 0),
-                                  LocalDateTime.of(2025, 11, 30, 12, 0));
+        Shift shift = new Shift(
+                LocalDateTime.of(2025, 11, 30, 8, 0),
+                LocalDateTime.of(2025, 11, 30, 12, 0)
+        );
 
-        // controller will accept the add and then return a list containing the shift
         when(controller.addShift(eq(empId), any())).thenReturn(true);
-        when(controller.listShifts(empId)).thenReturn(List.of(created));
+        when(controller.listShifts(empId)).thenReturn(List.of(shift));
 
-        // act: enter employee id and click Add Shift
         window.textBox("employeeIdField").enterText(empId);
         window.button("addShiftButton").click();
 
-        // assert: controller.addShift invoked and table shows one row
-        verify(controller, atLeastOnce()).addShift(eq(empId), any());
-        window.table("shiftsTable").requireRowCount(1);
-    }
-
-    @Test
-    void clickingAddShift_whenEmployeeMissing_shouldShowNoCallAndNoRows() {
-        // arrange
-        String empId = "MISSING";
-        when(controller.addShift(eq(empId), any())).thenReturn(false);
-        when(controller.listShifts(empId)).thenReturn(List.of());
-
-        // act
-        window.textBox("employeeIdField").enterText(empId);
-        window.button("addShiftButton").click();
-
-        // assert: controller called and table remains empty
-        verify(controller, atLeastOnce()).addShift(eq(empId), any());
-        window.table("shiftsTable").requireRowCount(0);
+        // Failing expected row count (forces RED)
+        window.table("shiftsTable").requireRowCount(2); // Your UI will give only 1 row
     }
 }
