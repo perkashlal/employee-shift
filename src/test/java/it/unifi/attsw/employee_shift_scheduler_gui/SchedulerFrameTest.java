@@ -18,7 +18,8 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 /**
- * GUI tests using AssertJ-Swing. Uses BasicRobot and FrameFixture.
+ * GUI tests using AssertJ-Swing.
+ * Ensures SchedulerFrame UI behaves as expected when adding a shift.
  */
 class SchedulerFrameTest {
 
@@ -29,10 +30,11 @@ class SchedulerFrameTest {
     @BeforeEach
     void setUp() {
         controller = mock(Controller.class);
+        // create a fresh robot for each test to avoid cross-test state
         robot = BasicRobot.robotWithNewAwtHierarchy();
         SchedulerFrame frame = GuiActionRunner.execute(() -> new SchedulerFrame(controller));
         window = new FrameFixture(robot, frame);
-        window.show();
+        window.show(); // shows the frame on screen - required for AssertJ-Swing to interact
     }
 
     @AfterEach
@@ -42,28 +44,44 @@ class SchedulerFrameTest {
     }
 
     @Test
-    void frameShouldHaveProTitle_and_buttonEnablement_and_tableUpdate() {
-        // title check
+    void addShift_withStartEnd_enablesAndPopulatesTable() {
+        // check title
         window.requireTitle("Employee Shift Scheduler PRO");
 
-        // button disabled initially
+        // add button should be disabled initially
         window.button("addShiftButton").requireDisabled();
 
-        // type and enable, mock controller to return one shift
+        // prepare test data
         String empId = "E100";
-        Shift created = new Shift(LocalDateTime.of(2025,11,30,8,0), LocalDateTime.of(2025,11,30,12,0));
+        LocalDateTime s = LocalDateTime.of(2025, 11, 30, 8, 0);
+        LocalDateTime e = LocalDateTime.of(2025, 11, 30, 12, 0);
 
+        // create a Shift instance for the mocked controller to return
+        Shift created = new Shift(s, e); // adapt if your Shift ctor differs
+
+        // mock controller behavior
         when(controller.addShift(eq(empId), any())).thenReturn(true);
         when(controller.listShifts(empId)).thenReturn(List.of(created));
 
+        // interact with UI: enter fields
         window.textBox("employeeIdField").enterText(empId);
+        window.textBox("startField").enterText("2025-11-30T08:00");
+        window.textBox("endField").enterText("2025-11-30T12:00");
+
+        // after entering required fields the add button should become enabled
         window.button("addShiftButton").requireEnabled();
+
+        // click the add button
         window.button("addShiftButton").click();
 
+        // verify controller interactions
         verify(controller, atLeastOnce()).addShift(eq(empId), any());
+        verify(controller, atLeastOnce()).listShifts(eq(empId));
+
+        // table should have one row populated
         window.table("shiftsTable").requireRowCount(1);
 
-        // check headers
+        // verify column headers
         assert "Shift ID".equals(window.table("shiftsTable").target().getColumnName(0));
         assert "Start (UTC)".equals(window.table("shiftsTable").target().getColumnName(1));
         assert "End (UTC)".equals(window.table("shiftsTable").target().getColumnName(2));
