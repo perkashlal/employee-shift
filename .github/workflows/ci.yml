@@ -23,6 +23,7 @@ jobs:
         options: >-
           --health-cmd="mongosh --eval 'db.adminCommand(\"ping\")'"
           --health-interval=10s --health-timeout=5s --health-retries=5
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -41,8 +42,29 @@ jobs:
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: |
             ${{ runner.os }}-m2-
-      - name: Build and run tests
-        run: mvn -B -DskipTests=false clean verify
+
+      - name: Install Xvfb
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y xvfb
+
+      - name: Start Xvfb and set DISPLAY
+        run: |
+          echo "Starting Xvfb on :99"
+          Xvfb :99 -screen 0 1920x1080x24 >/dev/null 2>&1 &
+          # export DISPLAY for subsequent steps
+          echo "DISPLAY=:99" >> $GITHUB_ENV
+
+      - name: Confirm DISPLAY (debug)
+        run: |
+          echo "DISPLAY is $DISPLAY"
+          # show env set in file
+          cat $GITHUB_ENV || true
+
+      - name: Build and run tests (includes GUI tests)
+        env:
+          MAVEN_OPTS: -Xmx2g
+        run: mvn -B -Djava.awt.headless=false -DskipTests=false clean verify
 
       - name: Generate JaCoCo report
         run: mvn -B jacoco:report
@@ -61,6 +83,7 @@ jobs:
           else
             echo "SONAR_TOKEN not set — skipping SonarCloud analysis"
           fi
+
   mutation:
     name: Mutation Testing (PIT) — run on main only
     runs-on: ubuntu-latest
