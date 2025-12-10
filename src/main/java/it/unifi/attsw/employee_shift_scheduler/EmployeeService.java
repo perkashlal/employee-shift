@@ -1,121 +1,109 @@
+// src/main/java/it/unifi/attsw/employee_shift_scheduler/EmployeeService.java
 package it.unifi.attsw.employee_shift_scheduler;
 
-import java.lang.reflect.Method;
+import it.unifi.attsw.employee_shift_scheduler.repository.EmployeeRepository;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 /**
- * Service layer for Employee operations.
+ * Service layer for employees and shifts.
+ *
+ * - addShiftToEmployee will create a new Employee if none exists for the given id.
+ * - Uses Employee API (addShift/removeShiftById) so domain rules are enforced.
  */
 public class EmployeeService {
 
-    private final EmployeeRepository repository;
+    private final EmployeeRepository repo;
 
-    public EmployeeService(EmployeeRepository repository) {
-        this.repository = repository;
+    public EmployeeService(EmployeeRepository repo) {
+        this.repo = repo;
     }
 
-    /* ---------------- Canonical API ---------------- */
-
-    public Employee save(Employee employee) {
-        if (employee == null) {
-            throw new IllegalArgumentException("employee cannot be null");
-        }
-        return repository.save(employee);
-    }
-
-    public List<Employee> findAll() {
-        return repository.findAll();
+    public Employee save(Employee e) {
+        return repo.save(e);
     }
 
     public Optional<Employee> findById(String id) {
-        return repository.findById(id);
+        return repo.findById(id);
+    }
+
+    public List<Employee> findAll() {
+        return repo.findAll();
     }
 
     public Optional<Employee> deleteById(String id) {
-        Optional<Employee> found = repository.findById(id);
-        if (found.isPresent()) {
-            repository.deleteById(id);
+        Optional<Employee> removed = repo.findById(id);
+        if (removed.isPresent()) {
+            repo.deleteById(id);
         }
-        return found;
-    }
-
-    public Employee addShiftToEmployee(String employeeId, Shift shift) {
-        Employee employee = repository.findById(employeeId)
-                .orElseThrow(() -> new IllegalArgumentException("Employee not found: " + employeeId));
-        employee.addShift(shift);
-        return repository.save(employee);
+        return removed;
     }
 
     /**
-     * Robust removal using domain method if present, otherwise defensive copy + reflective setter fallback.
+     * Add a shift to the employee. If the employee does not exist, create a new Employee
+     * with the given id and persist it (with the shift added).
+     *
+     * Returns the saved/updated Employee object.
+     */
+    public Employee addShiftToEmployee(String employeeId, Shift shift) {
+        System.out.println("EmployeeService.addShiftToEmployee() for employeeId=" + employeeId + " shiftId=" + (shift == null ? "null" : shift.getId()));
+
+        if (employeeId == null || employeeId.isBlank()) {
+            throw new IllegalArgumentException("employeeId required");
+        }
+        if (shift == null) {
+            throw new IllegalArgumentException("shift required");
+        }
+
+        Optional<Employee> maybe = repo.findById(employeeId);
+
+        Employee toSave;
+        if (maybe.isPresent()) {
+            // Use the Employee API to add the shift (enforces overlap/weekly checks)
+            Employee existing = maybe.get();
+            existing.addShift(shift); // may throw IllegalArgumentException on domain violation
+            toSave = existing;
+        } else {
+            // Employee not found -> create a new one with a minimal payload (name = id, role empty)
+            List<Shift> shifts = new ArrayList<>();
+            shifts.add(shift);
+            toSave = new Employee(employeeId, employeeId, "", shifts);
+        }
+
+        // Persist and return
+        Employee saved = repo.save(toSave);
+        return saved;
+    }
+
+    /**
+     * Remove a shift by id from the specified employee.
+     * Returns the updated Employee (throws if employee not found).
      */
     public Employee removeShiftFromEmployee(String employeeId, String shiftId) {
-        Employee employee = repository.findById(employeeId)
-                .orElseThrow(() -> new IllegalArgumentException("Employee not found: " + employeeId));
+        if (employeeId == null || employeeId.isBlank()) throw new IllegalArgumentException("employeeId required");
+        if (shiftId == null || shiftId.isBlank()) throw new IllegalArgumentException("shiftId required");
 
-        // 1) Preferred: try domain remover if available (void)
-        try {
-            employee.removeShiftById(shiftId);
-            return repository.save(employee);
-        } catch (NoSuchMethodError | AbstractMethodError nsme) {
-            // fall back
-        } catch (RuntimeException ex) {
-            if (ex instanceof IllegalArgumentException) {
-                throw ex;
-            }
-            // otherwise fall through to fallback
-        } catch (Throwable t) {
-            // fall back
+        Optional<Employee> maybe = repo.findById(employeeId);
+        if (maybe.isEmpty()) {
+            throw new IllegalArgumentException("Employee not found: " + employeeId);
         }
+        Employee existing = maybe.get();
 
-        // 2) Fallback: defensive copy + remove by id + setter via reflection
-        List<Shift> current = employee.getScheduledShifts(); // adjust getter name if different in your domain
-        List<Shift> mutable = new ArrayList<>(current);
+        // Use employee API to remove shift
+        existing.removeShiftById(shiftId);
 
-        boolean removed = mutable.removeIf(s -> {
-            String sid = s.getId(); // adjust to s.getShiftId() if needed
-            return shiftId != null && shiftId.equals(sid);
-        });
-
-        if (!removed) {
-            throw new IllegalArgumentException("Shift not found: " + shiftId);
-        }
-
-        // try to set updated list back using reflection
-        try {
-            Method setter = employee.getClass().getMethod("setScheduledShifts", List.class);
-            setter.invoke(employee, mutable);
-            return repository.save(employee);
-        } catch (NoSuchMethodException nsme) {
-            throw new IllegalStateException("Employee does not expose setScheduledShifts(List<Shift>) and domain remover failed", nsme);
-        } catch (Exception e) {
-            throw new IllegalStateException("Failed to update employee shifts via setter", e);
-        }
+        // Persist and return
+        Employee saved = repo.save(existing);
+        return saved;
     }
 
-    /* ---------------- Legacy wrappers ---------------- */
-
-    public boolean saveEmployee(Employee employee) {
-        save(employee);
-        return true;
-    }
-
-    public boolean findEmployee(String employeeId) {
-        return repository.findById(employeeId).isPresent();
-    }
-
-    public List<Employee> findAllEmployees() {
-        return findAll();
-    }
-
+    /**
+     * Remove employee (alias)
+     */
     public boolean removeEmployee(String employeeId) {
-        Optional<Employee> found = repository.findById(employeeId);
-        if (found.isPresent()) {
-            repository.deleteById(employeeId);
-            return true;
-        }
-        return false;
+        Optional<Employee> removed = deleteById(employeeId);
+        return removed.isPresent();
     }
 }

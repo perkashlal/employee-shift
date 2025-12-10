@@ -10,6 +10,9 @@ import java.util.UUID;
 /**
  * Shift value object.
  * Provides constructors accepting LocalDateTime (tests use LocalDateTime).
+ *
+ * Added a no-arg constructor for frameworks/tests that require it.
+ * The no-arg constructor creates a valid short dummy shift (now -> now + 1h).
  */
 public class Shift {
 
@@ -17,6 +20,19 @@ public class Shift {
     private final Instant start;
     private final Instant end;
     private final String notes;
+
+    /**
+     * No-arg constructor (added for frameworks/tests that require new Shift()).
+     * Initializes a valid default shift: start = now, end = now + 1 hour.
+     */
+    public Shift() {
+        Instant s = Instant.now();
+        Instant e = s.plus(Duration.ofHours(1));
+        this.id = UUID.randomUUID().toString();
+        this.start = s;
+        this.end = e;
+        this.notes = "";
+    }
 
     public Shift(String id, Instant start, Instant end, String notes) {
         if (id == null || id.isBlank()) throw new IllegalArgumentException("id required");

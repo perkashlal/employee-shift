@@ -10,6 +10,8 @@ import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -17,6 +19,7 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
+import java.util.ArrayList;
 
 /**
  * SchedulerFrame with optional UI update delay.
@@ -37,7 +40,10 @@ public class SchedulerFrame extends JFrame {
 
     private JLabel weeklyHoursLabel;
 
-    private static final DateTimeFormatter INPUT_FORMAT = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+    // primary input format (preferred)
+    private static final DateTimeFormatter INPUT_FORMAT_PRIMARY = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm");
+    // fallback with seconds
+    private static final DateTimeFormatter INPUT_FORMAT_WITH_SECONDS = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
     private static final DateTimeFormatter DISPLAY_UTC = DateTimeFormatter.ISO_INSTANT.withZone(ZoneOffset.UTC);
 
     // If <= 0 -> immediate updates (suitable for tests). If > 0 -> delayed UI refresh in ms.
@@ -64,6 +70,19 @@ public class SchedulerFrame extends JFrame {
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setSize(950, 540);
         setLocationRelativeTo(null);
+
+        // When the frame becomes visible, ensure a component has focus so AssertJ can focus text fields
+        this.addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentShown(ComponentEvent e) {
+                // request focus on the employeeIdField after show; use invokeLater to avoid timing races
+                SwingUtilities.invokeLater(() -> {
+                    if (employeeIdField != null && employeeIdField.isFocusable()) {
+                        employeeIdField.requestFocusInWindow();
+                    }
+                });
+            }
+        });
     }
 
     private void initComponents() {
@@ -71,21 +90,24 @@ public class SchedulerFrame extends JFrame {
         top.add(new JLabel("Employee ID:"));
         employeeIdField = new JTextField(10);
         employeeIdField.setName("employeeIdField");
+        employeeIdField.setFocusable(true); // defensive: ensure focusable
         top.add(employeeIdField);
 
-        top.add(new JLabel("Start (yyyy-MM-dd'T'HH:mm):"));
+        top.add(new JLabel("Start (yyyy-MM-dd'T'HH:mm or yyyy-MM-dd'T'HH:mm:ss):"));
         startField = new JTextField(16);
         startField.setName("startField");
+        startField.setFocusable(true);
         top.add(startField);
 
-        top.add(new JLabel("End (yyyy-MM-dd'T'HH:mm):"));
+        top.add(new JLabel("End (yyyy-MM-dd'T'HH:mm or yyyy-MM-dd'T'HH:mm:ss):"));
         endField = new JTextField(16);
         endField.setName("endField");
+        endField.setFocusable(true);
         top.add(endField);
 
         addShiftButton = new JButton("Add Shift");
         addShiftButton.setName("addShiftButton");
-        addShiftButton.setEnabled(false);
+        addShiftButton.setEnabled(false); // default; updateAddEnabled() will set the correct state
         top.add(addShiftButton);
 
         updateShiftButton = new JButton("Update Shift");
@@ -128,6 +150,9 @@ public class SchedulerFrame extends JFrame {
         startField.getDocument().addDocumentListener(dl);
         endField.getDocument().addDocumentListener(dl);
 
+        // Ensure the initial enabled state respects any pre-filled fields (tests sometimes set fields before showing)
+        updateAddEnabled();
+
         shiftsTable.getSelectionModel().addListSelectionListener(new ListSelectionListener() {
             @Override public void valueChanged(ListSelectionEvent e) {
                 int sel = shiftsTable.getSelectedRow();
@@ -141,13 +166,13 @@ public class SchedulerFrame extends JFrame {
                     try {
                         if (so != null) {
                             Instant st = Instant.parse(so.toString());
-                            startField.setText(LocalDateTime.ofInstant(st, ZoneOffset.UTC).format(INPUT_FORMAT));
+                            startField.setText(LocalDateTime.ofInstant(st, ZoneOffset.UTC).format(INPUT_FORMAT_PRIMARY));
                         } else startField.setText("");
                     } catch (Exception ignore) { startField.setText(""); }
                     try {
                         if (eo != null) {
                             Instant en = Instant.parse(eo.toString());
-                            endField.setText(LocalDateTime.ofInstant(en, ZoneOffset.UTC).format(INPUT_FORMAT));
+                            endField.setText(LocalDateTime.ofInstant(en, ZoneOffset.UTC).format(INPUT_FORMAT_PRIMARY));
                         } else endField.setText("");
                     } catch (Exception ignore) { endField.setText(""); }
                 }
@@ -158,17 +183,28 @@ public class SchedulerFrame extends JFrame {
             String emp = employeeIdField.getText().trim();
             LocalDateTime s, e;
             try {
-                s = LocalDateTime.parse(startField.getText().trim(), INPUT_FORMAT);
-                e = LocalDateTime.parse(endField.getText().trim(), INPUT_FORMAT);
+                s = parseLocalDateTimeFlexible(startField.getText().trim());
+                e = parseLocalDateTimeFlexible(endField.getText().trim());
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(this, "Invalid date/time!");
                 return;
             }
             Shift shift = new Shift(s, e);
-            boolean ok = controller.addShift(emp, shift);
+            // call controller (mock in tests will intercept this)
+            boolean ok;
+            try {
+                ok = controller.addShift(emp, shift);
+            } catch (Throwable t) {
+                // controller might throw in some implementations — show but don't crash tests
+                JOptionPane.showMessageDialog(this, "Cannot add shift: " + t.getMessage());
+                return;
+            }
             if (ok) {
                 List<Shift> shifts = controller.listShifts(emp);
                 runReloadWithDelay(shifts);
+            } else {
+                // show user feedback (and tests that expect false will handle it)
+                JOptionPane.showMessageDialog(this, "Add operation reported failure");
             }
         });
 
@@ -182,8 +218,8 @@ public class SchedulerFrame extends JFrame {
 
             LocalDateTime s, e;
             try {
-                s = LocalDateTime.parse(startField.getText().trim(), INPUT_FORMAT);
-                e = LocalDateTime.parse(endField.getText().trim(), INPUT_FORMAT);
+                s = parseLocalDateTimeFlexible(startField.getText().trim());
+                e = parseLocalDateTimeFlexible(endField.getText().trim());
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(this, "Invalid date/time!");
                 return;
@@ -215,14 +251,40 @@ public class SchedulerFrame extends JFrame {
         });
     }
 
+    /**
+     * Flexible parser: tries primary pattern (yyyy-MM-dd'T'HH:mm) and falls back to seconds pattern.
+     * Throws Exception if none match.
+     */
+    private LocalDateTime parseLocalDateTimeFlexible(String txt) {
+        if (txt == null || txt.isEmpty()) throw new IllegalArgumentException("empty");
+        try {
+            return LocalDateTime.parse(txt, INPUT_FORMAT_PRIMARY);
+        } catch (Exception ignored) {}
+        try {
+            return LocalDateTime.parse(txt, INPUT_FORMAT_WITH_SECONDS);
+        } catch (Exception ignored) {}
+        // try ISO_LOCAL_DATE_TIME (even more permissive)
+        try {
+            return LocalDateTime.parse(txt, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        } catch (Exception ex) {
+            throw new IllegalArgumentException("Invalid date/time format: " + txt);
+        }
+    }
+
     private void updateAddEnabled() {
         try {
             boolean ok = !employeeIdField.getText().isEmpty()
                     && !startField.getText().isEmpty()
-                    && !endField.getText().isEmpty()
-                    && LocalDateTime.parse(startField.getText().trim(), INPUT_FORMAT) != null
-                    && LocalDateTime.parse(endField.getText().trim(), INPUT_FORMAT) != null;
-
+                    && !endField.getText().isEmpty();
+            // quick parse test: ensure parsing succeeds with flexible parser
+            if (ok) {
+                try {
+                    parseLocalDateTimeFlexible(startField.getText().trim());
+                    parseLocalDateTimeFlexible(endField.getText().trim());
+                } catch (Exception ex) {
+                    ok = false; // parsing failed -> don't enable button
+                }
+            }
             addShiftButton.setEnabled(ok);
         } catch (Exception ex) {
             addShiftButton.setEnabled(false);
