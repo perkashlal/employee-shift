@@ -174,9 +174,12 @@
         <configuration>
           <useModulePath>false</useModulePath>
           <forkCount>1</forkCount>
-          <reuseForks>true</reuseForks>
-          <argLine>${jvm.opens} ${argLine}</argLine>
+          <!-- Important: do not reuse forks to avoid AWT init issues in fork reuse -->
+          <reuseForks>false</reuseForks>
+          <!-- Ensure the forked JVMs receive the JVM opens and headful AWT flag -->
+          <argLine>${jvm.opens} -Djava.awt.headless=false</argLine>
           <systemPropertyVariables>
+            <!-- keep for compatibility; argLine already sets the headless property for forks -->
             <java.awt.headless>false</java.awt.headless>
           </systemPropertyVariables>
           <includes>
@@ -192,7 +195,7 @@
         <version>3.1.2</version>
         <configuration>
           <useModulePath>false</useModulePath>
-          <argLine>${jvm.opens} ${argLine}</argLine>
+          <argLine>${jvm.opens} -Djava.awt.headless=false ${argLine}</argLine>
           <systemPropertyVariables>
             <java.awt.headless>false</java.awt.headless>
           </systemPropertyVariables>
