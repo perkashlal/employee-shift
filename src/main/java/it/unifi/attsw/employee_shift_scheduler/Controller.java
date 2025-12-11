@@ -5,20 +5,31 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Backwards-compatible controller: exposes both the new API and legacy wrappers
- * used by the Swing GUI and tests.
+ * Backwards-compatible controller used by GUI, unit-tests and integration-tests.
+ *
+ * - GUI / unit tests use the GUI-friendly methods that swallow exceptions and call view.showError(...)
+ * - Integration tests can call the "...OrThrow" variants which notify the view then rethrow the exception
+ *   so the test harness can observe failures.
  */
 public class Controller {
 
     private final EmployeeService employeeService;
     private final EmployeeView view;
 
+    /**
+     * Primary constructor used in production/tests when a view is available.
+     */
     public Controller(EmployeeService employeeService, EmployeeView view) {
+        if (employeeService == null) throw new IllegalArgumentException("employeeService required");
+        if (view == null) throw new IllegalArgumentException("view required");
         this.employeeService = employeeService;
         this.view = view;
     }
 
-    // Legacy constructor used by some older code that constructs Controller(service)
+    /**
+     * Convenience constructor used by many tests and legacy code: supplies a NoOp view.
+     * This is why ControllerIT and other tests can call new Controller(service).
+     */
     public Controller(EmployeeService employeeService) {
         this(employeeService, new NoOpEmployeeView());
     }
@@ -32,7 +43,7 @@ public class Controller {
     }
 
     /**
-     * New/canonical: create employee. Swallow runtime exceptions and show error on view.
+     * New / canonical API: create employee. GUI-friendly: swallow runtime exceptions and show error on view.
      */
     public void newEmployee(Employee employee) {
         try {
@@ -43,23 +54,41 @@ public class Controller {
         }
     }
 
+    /**
+     * GUI-friendly: add shift and notify view; swallow exceptions (do not rethrow).
+     * ControllerTest expects this to catch service exceptions and call view.showError(...)
+     */
     public void addShiftToEmployee(String employeeId, Shift shift) {
         try {
             Employee updated = employeeService.addShiftToEmployee(employeeId, shift);
             view.shiftAddedToEmployee(updated, shift);
         } catch (RuntimeException | Error ex) {
             view.showError("Cannot add shift: " + ex.getMessage());
+            // GUI variant - swallow the exception so UI remains responsive.
+        }
+    }
+
+    /**
+     * Programmatic / integration-test variant: notify view then rethrow the exception so the caller can assert it.
+     * Integration tests should call this method when they expect an exception to propagate.
+     */
+    public Employee addShiftToEmployeeOrThrow(String employeeId, Shift shift) {
+        try {
+            Employee updated = employeeService.addShiftToEmployee(employeeId, shift);
+            view.shiftAddedToEmployee(updated, shift);
+            return updated;
+        } catch (RuntimeException | Error ex) {
+            view.showError("Cannot add shift: " + ex.getMessage());
+            throw ex; // rethrow for programmatic callers / integration tests
         }
     }
 
     public List<Shift> listShiftsForEmployee(String employeeId) {
         return employeeService.findById(employeeId)
                 .map(emp -> {
-                    // Try likely getter name; adjust later if your Employee uses a different getter.
                     try {
                         return emp.getScheduledShifts();
                     } catch (Throwable t) {
-                        // fallback to empty list if getter missing
                         return Collections.<Shift>emptyList();
                     }
                 })
@@ -70,6 +99,9 @@ public class Controller {
         return employeeService.deleteById(employeeId);
     }
 
+    /**
+     * Remove shift and return the updated employee (programmatic helper).
+     */
     public Employee removeShiftFromEmployeeAndReturn(String employeeId, String shiftId) {
         return employeeService.removeShiftFromEmployee(employeeId, shiftId);
     }
@@ -90,11 +122,15 @@ public class Controller {
         return allEmployees();
     }
 
+    /**
+     * Legacy GUI-friendly wrapper for addShiftToEmployee.
+     */
     public boolean addShift(String employeeId, Shift shift) {
         try {
             addShiftToEmployee(employeeId, shift);
             return true;
         } catch (RuntimeException | Error ex) {
+            // addShiftToEmployee already swallows, but keep defensive handling
             view.showError("Cannot add shift: " + ex.getMessage());
             return false;
         }
@@ -105,7 +141,7 @@ public class Controller {
     }
 
     /**
-     * Legacy deleteEmployee(String) used by tests: void method that notifies view.
+     * Legacy deleteEmployee(String) used by GUI/tests: void method that notifies view.
      */
     public void deleteEmployee(String employeeId) {
         try {
@@ -121,7 +157,7 @@ public class Controller {
     }
 
     /**
-     * Legacy remove-shift method used by GUI/tests. Tests call controller.removeShiftFromEmployee(empId, shiftId).
+     * Legacy remove-shift method used by GUI/tests. Swallows exceptions and notifies view.
      */
     public void removeShiftFromEmployee(String employeeId, String shiftId) {
         try {
@@ -148,11 +184,13 @@ public class Controller {
         void employeeAdded(Employee employee);
         void employeeRemoved(Employee employee);
         void showError(String message);
-
         void shiftAddedToEmployee(Employee employee, Shift shift);
         void shiftRemovedFromEmployee(Employee employee, String shiftId);
     }
 
+    /**
+     * Default no-op view used when tests/legacy code don't need a real GUI.
+     */
     private static class NoOpEmployeeView implements EmployeeView {
         @Override public void showAllEmployees(List<Employee> employees) {}
         @Override public void employeeAdded(Employee employee) {}

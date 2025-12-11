@@ -63,13 +63,23 @@ public class EmployeeService {
         if (maybe.isPresent()) {
             // Use the Employee API to add the shift (enforces overlap/weekly checks)
             Employee existing = maybe.get();
-            existing.addShift(shift); // may throw IllegalArgumentException on domain violation
+            try {
+                existing.addShift(shift); // may throw IllegalArgumentException on domain violation
+            } catch (IllegalArgumentException e) {
+                // Convert domain validation exception to RuntimeException so callers (controller/tests) observe a runtime error
+                throw new RuntimeException(e.getMessage(), e);
+            }
             toSave = existing;
         } else {
             // Employee not found -> create a new one with a minimal payload (name = id, role empty)
-            List<Shift> shifts = new ArrayList<>();
-            shifts.add(shift);
-            toSave = new Employee(employeeId, employeeId, "", shifts);
+            // Use Employee API to add shift so domain rules are enforced consistently
+            toSave = new Employee(employeeId, employeeId, "", new ArrayList<>());
+            try {
+                toSave.addShift(shift); // should validate shift via Employee API
+            } catch (IllegalArgumentException e) {
+                // If the shift is invalid according to domain rules, propagate as RuntimeException
+                throw new RuntimeException(e.getMessage(), e);
+            }
         }
 
         // Persist and return
@@ -92,7 +102,12 @@ public class EmployeeService {
         Employee existing = maybe.get();
 
         // Use employee API to remove shift
-        existing.removeShiftById(shiftId);
+        try {
+            existing.removeShiftById(shiftId);
+        } catch (IllegalArgumentException e) {
+            // Convert domain exceptions to RuntimeException for consistency with controller expectations
+            throw new RuntimeException(e.getMessage(), e);
+        }
 
         // Persist and return
         Employee saved = repo.save(existing);
