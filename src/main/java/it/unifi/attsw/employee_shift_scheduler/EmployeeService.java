@@ -1,4 +1,3 @@
-// src/main/java/it/unifi/attsw/employee_shift_scheduler/EmployeeService.java
 package it.unifi.attsw.employee_shift_scheduler;
 
 import it.unifi.attsw.employee_shift_scheduler.repository.EmployeeRepository;
@@ -12,6 +11,9 @@ import java.util.Optional;
  *
  * - addShiftToEmployee will create a new Employee if none exists for the given id.
  * - Uses Employee API (addShift/removeShiftById) so domain rules are enforced.
+ *
+ * Note: domain validation failures are wrapped into RuntimeException so integration
+ * tests and controllers receive a runtime error as expected by the test-suite.
  */
 public class EmployeeService {
 
@@ -45,10 +47,12 @@ public class EmployeeService {
      * Add a shift to the employee. If the employee does not exist, create a new Employee
      * with the given id and persist it (with the shift added).
      *
-     * Returns the saved/updated Employee object.
+     * IMPORTANT: any domain validation failure (e.g. overlap or weekly limit)
+     * is converted to RuntimeException so test callers and controllers observe it.
      */
     public Employee addShiftToEmployee(String employeeId, Shift shift) {
-        System.out.println("EmployeeService.addShiftToEmployee() for employeeId=" + employeeId + " shiftId=" + (shift == null ? "null" : shift.getId()));
+        System.out.println("EmployeeService.addShiftToEmployee() for employeeId="
+                + employeeId + " shiftId=" + (shift == null ? "null" : shift.getId()));
 
         if (employeeId == null || employeeId.isBlank()) {
             throw new IllegalArgumentException("employeeId required");
@@ -61,28 +65,26 @@ public class EmployeeService {
 
         Employee toSave;
         if (maybe.isPresent()) {
-            // Use the Employee API to add the shift (enforces overlap/weekly checks)
+            // Existing employee: use Employee domain API (addShift) so domain rules are enforced
             Employee existing = maybe.get();
             try {
                 existing.addShift(shift); // may throw IllegalArgumentException on domain violation
-            } catch (IllegalArgumentException e) {
-                // Convert domain validation exception to RuntimeException so callers (controller/tests) observe a runtime error
-                throw new RuntimeException(e.getMessage(), e);
+            } catch (Throwable t) {
+                // Wrap domain validation failure to satisfy integration tests' expectation
+                throw new RuntimeException("Cannot add shift to existing employee: " + t.getMessage(), t);
             }
             toSave = existing;
         } else {
-            // Employee not found -> create a new one with a minimal payload (name = id, role empty)
-            // Use Employee API to add shift so domain rules are enforced consistently
+            // Employee not present: create minimal Employee and use domain API to validate shift
             toSave = new Employee(employeeId, employeeId, "", new ArrayList<>());
             try {
-                toSave.addShift(shift); // should validate shift via Employee API
-            } catch (IllegalArgumentException e) {
-                // If the shift is invalid according to domain rules, propagate as RuntimeException
-                throw new RuntimeException(e.getMessage(), e);
+                toSave.addShift(shift);
+            } catch (Throwable t) {
+                throw new RuntimeException("Cannot add shift to new employee: " + t.getMessage(), t);
             }
         }
 
-        // Persist and return
+        // Persist and return only if addShift succeeded
         Employee saved = repo.save(toSave);
         return saved;
     }
@@ -104,9 +106,8 @@ public class EmployeeService {
         // Use employee API to remove shift
         try {
             existing.removeShiftById(shiftId);
-        } catch (IllegalArgumentException e) {
-            // Convert domain exceptions to RuntimeException for consistency with controller expectations
-            throw new RuntimeException(e.getMessage(), e);
+        } catch (Throwable t) {
+            throw new RuntimeException("Cannot remove shift: " + t.getMessage(), t);
         }
 
         // Persist and return

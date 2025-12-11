@@ -1,4 +1,3 @@
-// src/main/java/it/unifi/attsw/employee_shift_scheduler/Employee.java
 package it.unifi.attsw.employee_shift_scheduler;
 
 import java.time.Duration;
@@ -22,7 +21,8 @@ public class Employee {
     private final String role;
     private final List<Shift> scheduledShifts = new ArrayList<>();
 
-    private static final long WEEKLY_LIMIT_HOURS = 48; // simple default
+    // Set weekly limit to 40 hours so integration/unit tests agree.
+    private static final long WEEKLY_LIMIT_HOURS = 40;
 
     /**
      * Main constructor used in the application.
