@@ -3,6 +3,7 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
                              https://maven.apache.org/xsd/maven-4.0.0.xsd">
+
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>it.unifi.attsw</groupId>
@@ -10,31 +11,44 @@
   <version>0.1.0-SNAPSHOT</version>
   <packaging>jar</packaging>
 
-  <parent>
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-starter-parent</artifactId>
-    <version>3.1.4</version>
-    <relativePath/>
-  </parent>
-
+  <!-- ================================================= -->
+  <!-- Properties -->
+  <!-- ================================================= -->
   <properties>
     <java.version>17</java.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
-    <!-- Versions -->
-    <junit.jupiter.version>5.9.3</junit.jupiter.version>
-    <mockito.version>5.4.0</mockito.version>
-    <testcontainers.version>1.20.2</testcontainers.version>
-    <pitest.version>1.9.13</pitest.version>
-    <sonar.plugin.version>3.9.1.2184</sonar.plugin.version>
+    <!-- Testing -->
+    <junit.version>5.10.1</junit.version>
+    <mockito.version>5.11.0</mockito.version>
+    <assertj.version>3.25.3</assertj.version>
+    <assertj.swing.version>3.17.1</assertj.swing.version>
 
-    <!-- JVM opens for reflective GUI tests on Java 17 -->
-    <jvm.opens>--add-opens java.base/java.util=ALL-UNNAMED --add-opens java.base/java.lang=ALL-UNNAMED</jvm.opens>
+    <!-- Mongo -->
+    <mongodb.driver.version>4.11.1</mongodb.driver.version>
+
+    <!-- Testcontainers -->
+    <testcontainers.version>1.20.2</testcontainers.version>
+
+    <!-- Coverage -->
+    <jacoco.version>0.8.10</jacoco.version>
+
+    <!-- Mutation -->
+    <pitest.version>1.15.0</pitest.version>
+
+    <!-- GUI -->
+    <jvm.opens>
+      --add-opens java.base/java.lang=ALL-UNNAMED
+      --add-opens java.base/java.util=ALL-UNNAMED
+      -Djava.awt.headless=false
+    </jvm.opens>
   </properties>
 
+  <!-- ================================================= -->
+  <!-- Testcontainers BOM -->
+  <!-- ================================================= -->
   <dependencyManagement>
     <dependencies>
-      <!-- Use Testcontainers BOM for coherent versions -->
       <dependency>
         <groupId>org.testcontainers</groupId>
         <artifactId>testcontainers-bom</artifactId>
@@ -45,67 +59,34 @@
     </dependencies>
   </dependencyManagement>
 
+  <!-- ================================================= -->
+  <!-- Dependencies -->
+  <!-- ================================================= -->
   <dependencies>
-    <!-- Spring Boot starters (app) -->
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-web</artifactId>
-    </dependency>
 
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-data-mongodb</artifactId>
-    </dependency>
-
-    <!-- Explicit MongoDB driver artifacts to ensure consistent classpath -->
+    <!-- MongoDB -->
     <dependency>
       <groupId>org.mongodb</groupId>
       <artifactId>mongodb-driver-sync</artifactId>
-      <version>4.11.2</version>
-    </dependency>
-    <dependency>
-      <groupId>org.mongodb</groupId>
-      <artifactId>mongodb-driver-core</artifactId>
-      <version>4.11.2</version>
-    </dependency>
-    <dependency>
-      <groupId>org.mongodb</groupId>
-      <artifactId>bson</artifactId>
-      <version>4.11.2</version>
+      <version>${mongodb.driver.version}</version>
     </dependency>
 
-    <!-- Test dependencies -->
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-test</artifactId>
-      <scope>test</scope>
-      <exclusions>
-        <exclusion>
-          <groupId>org.junit.vintage</groupId>
-          <artifactId>junit-vintage-engine</artifactId>
-        </exclusion>
-      </exclusions>
-    </dependency>
-
+    <!-- JUnit 5 -->
     <dependency>
       <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter-api</artifactId>
-      <version>${junit.jupiter.version}</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter-engine</artifactId>
-      <version>${junit.jupiter.version}</version>
+      <artifactId>junit-jupiter</artifactId>
+      <version>${junit.version}</version>
       <scope>test</scope>
     </dependency>
 
+    <!-- Mockito -->
     <dependency>
       <groupId>org.mockito</groupId>
       <artifactId>mockito-core</artifactId>
       <version>${mockito.version}</version>
       <scope>test</scope>
     </dependency>
+
     <dependency>
       <groupId>org.mockito</groupId>
       <artifactId>mockito-junit-jupiter</artifactId>
@@ -113,10 +94,11 @@
       <scope>test</scope>
     </dependency>
 
+    <!-- AssertJ -->
     <dependency>
       <groupId>org.assertj</groupId>
       <artifactId>assertj-core</artifactId>
-      <version>3.24.2</version>
+      <version>${assertj.version}</version>
       <scope>test</scope>
     </dependency>
 
@@ -124,151 +106,170 @@
     <dependency>
       <groupId>org.assertj</groupId>
       <artifactId>assertj-swing-junit</artifactId>
-      <version>3.17.1</version>
+      <version>${assertj.swing.version}</version>
       <scope>test</scope>
     </dependency>
 
-    <!-- Testcontainers (managed by BOM) -->
-    <dependency>
-      <groupId>org.testcontainers</groupId>
-      <artifactId>testcontainers</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.testcontainers</groupId>
-      <artifactId>mongodb</artifactId>
-      <scope>test</scope>
-    </dependency>
+    <!-- Testcontainers -->
     <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>junit-jupiter</artifactId>
       <scope>test</scope>
     </dependency>
 
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>mongodb</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <!-- Logging (fix SLF4J warning) -->
+    <dependency>
+      <groupId>ch.qos.logback</groupId>
+      <artifactId>logback-classic</artifactId>
+      <version>1.5.6</version>
+    </dependency>
+
+    <!-- PIT JUnit 5 plugin -->
+    <dependency>
+      <groupId>org.pitest</groupId>
+      <artifactId>pitest-junit5-plugin</artifactId>
+      <version>1.2.0</version>
+      <scope>test</scope>
+    </dependency>
+
   </dependencies>
 
+  <!-- ================================================= -->
+  <!-- Build -->
+  <!-- ================================================= -->
   <build>
-  <plugins>
+    <plugins>
 
-    <!-- Spring Boot plugin (single declaration) -->
-    <plugin>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-maven-plugin</artifactId>
-      <!-- version can be omitted because parent manages it; include configuration only -->
-      <configuration>
-        <mainClass>it.unifi.attsw.employee_shift_scheduler.App</mainClass>
-      </configuration>
-    </plugin>
+      <!-- Compiler -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.11.0</version>
+        <configuration>
+          <release>${java.version}</release>
+        </configuration>
+      </plugin>
 
-    <!-- Compiler -->
-    <plugin>
-      <groupId>org.apache.maven.plugins</groupId>
-      <artifactId>maven-compiler-plugin</artifactId>
-      <version>3.11.0</version>
-      <configuration>
-        <release>${java.version}</release>
-      </configuration>
-    </plugin>
+      <!-- Unit Tests -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>3.2.5</version>
+        <configuration>
+          <argLine>${jacocoArgLine} ${jvm.opens}</argLine>
+          <includes>
+            <include>**/*Test.java</include>
+          </includes>
+        </configuration>
+      </plugin>
 
-    <!-- Surefire for unit tests -->
-    <plugin>
-      <groupId>org.apache.maven.plugins</groupId>
-      <artifactId>maven-surefire-plugin</artifactId>
-      <version>3.0.0-M9</version>
-      <configuration>
-        <useModulePath>false</useModulePath>
-        <forkCount>1</forkCount>
-        <reuseForks>false</reuseForks>
-        <!-- pass JVM opens + headful AWT to the forked JVM -->
-        <argLine>${jvm.opens} -Djava.awt.headless=false</argLine>
-        <!-- remove duplicate systemPropertyVariables entry to avoid warnings -->
-        <includes>
-          <include>**/*Test.java</include>
-        </includes>
-      </configuration>
-    </plugin>
+      <!-- Integration Tests -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-failsafe-plugin</artifactId>
+        <version>3.2.5</version>
+        <configuration>
+          <argLine>${jacocoArgLine} ${jvm.opens}</argLine>
+          <includes>
+            <include>**/*IT.java</include>
+          </includes>
+        </configuration>
+        <executions>
+          <execution>
+            <goals>
+              <goal>integration-test</goal>
+              <goal>verify</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
 
-    <!-- Failsafe for integration tests -->
-    <plugin>
-      <groupId>org.apache.maven.plugins</groupId>
-      <artifactId>maven-failsafe-plugin</artifactId>
-      <version>3.1.2</version>
-      <configuration>
-        <useModulePath>false</useModulePath>
-        <!-- fixed argLine (no self reference) -->
-        <argLine>${jvm.opens} -Djava.awt.headless=false</argLine>
-        <includes>
-          <include>**/*IT.java</include>
-        </includes>
-      </configuration>
-      <executions>
-        <execution>
-          <goals>
-            <goal>integration-test</goal>
-            <goal>verify</goal>
-          </goals>
-        </execution>
-      </executions>
-    </plugin>
+      <!-- JaCoCo -->
+      <plugin>
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <version>${jacoco.version}</version>
+        <executions>
+          <execution>
+            <id>prepare-agent</id>
+            <goals>
+              <goal>prepare-agent</goal>
+            </goals>
+            <configuration>
+              <propertyName>jacocoArgLine</propertyName>
+            </configuration>
+          </execution>
+          <execution>
+            <id>report</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>report</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
 
-    <!-- JaCoCo -->
-    <plugin>
-      <groupId>org.jacoco</groupId>
-      <artifactId>jacoco-maven-plugin</artifactId>
-      <version>0.8.10</version>
-      <executions>
-        <execution>
-          <id>prepare-agent</id>
-          <goals>
-            <goal>prepare-agent</goal>
-          </goals>
-        </execution>
-        <execution>
-          <id>report</id>
-          <phase>verify</phase>
-          <goals>
-            <goal>report</goal>
-          </goals>
-        </execution>
-      </executions>
-    </plugin>
+      <!-- PIT Mutation Testing -->
+      <plugin>
+        <groupId>org.pitest</groupId>
+        <artifactId>pitest-maven</artifactId>
+        <version>${pitest.version}</version>
+        <configuration>
 
-    <!-- PIT mutation testing -->
-    <plugin>
-      <groupId>org.pitest</groupId>
-      <artifactId>pitest-maven</artifactId>
-      <version>${pitest.version}</version>
-      <configuration>
-        <targetClasses>
-          <param>it.unifi.attsw.*</param>
-        </targetClasses>
-        <targetTests>
-          <param>it.unifi.attsw.*</param>
-        </targetTests>
-        <mutators>DEFAULTS</mutators>
-        <threads>2</threads>
-        <outputFormats>
-          <param>HTML</param>
-          <param>XML</param>
-        </outputFormats>
-        <avoidCallsTo>
-          <param>java.lang.System</param>
-        </avoidCallsTo>
-      </configuration>
-    </plugin>
+          <!-- Mutate ONLY business logic -->
+          <targetClasses>
+            <param>it.unifi.attsw.employee_shift_scheduler.*</param>
+          </targetClasses>
 
-    <!-- Exec plugin to run main with dependencies (convenience) -->
-    <plugin>
-      <groupId>org.codehaus.mojo</groupId>
-      <artifactId>exec-maven-plugin</artifactId>
-      <version>3.1.0</version>
-      <configuration>
-        <mainClass>it.unifi.attsw.employee_shift_scheduler.App</mainClass>
-      </configuration>
-    </plugin>
+          <!-- Run ONLY unit tests -->
+          <targetTests>
+            <param>it.unifi.attsw.employee_shift_scheduler.*Test</param>
+          </targetTests>
 
-  </plugins>
-</build>
+          <!-- Exclude GUI / IT / E2E -->
+          <excludedClasses>
+            <param>it.unifi.attsw.employee_shift_scheduler_gui.*</param>
+            <param>it.unifi.attsw.employee_shift_scheduler.integration.*</param>
+            <param>it.unifi.attsw.employee_shift_scheduler.e2e.*</param>
+          </excludedClasses>
 
+          <excludedTestClasses>
+            <param>**/*IT*</param>
+            <param>**/*E2E*</param>
+            <param>**/*Frame*</param>
+          </excludedTestClasses>
+
+          <threads>4</threads>
+
+          <outputFormats>
+            <param>HTML</param>
+            <param>XML</param>
+          </outputFormats>
+
+        </configuration>
+      </plugin>
+
+      <!-- JAR -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <version>3.3.0</version>
+        <configuration>
+          <archive>
+            <manifest>
+              <mainClass>it.unifi.attsw.employee_shift_scheduler.App</mainClass>
+            </manifest>
+          </archive>
+        </configuration>
+      </plugin>
+
+    </plugins>
+  </build>
 
 </project>

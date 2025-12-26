@@ -1,4 +1,4 @@
-package it.unifi.attsw.employee_shift_scheduler.integration;
+package it.unifi.attsw.employee_shift_scheduler.e2e;
 
 import it.unifi.attsw.employee_shift_scheduler.Controller;
 import it.unifi.attsw.employee_shift_scheduler.EmployeeService;
@@ -6,18 +6,15 @@ import it.unifi.attsw.employee_shift_scheduler.InMemoryEmployeeRepository;
 import it.unifi.attsw.employee_shift_scheduler_gui.SchedulerFrame;
 
 import org.assertj.swing.edt.GuiActionRunner;
-import org.assertj.swing.edt.GuiQuery;
 import org.assertj.swing.fixture.FrameFixture;
 import org.assertj.swing.junit.testcase.AssertJSwingJUnitTestCase;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+
 import javax.swing.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * E2E smoke test running under JUnit 4 (required by AssertJ Swing)
- */
-public class SchedulerE2EIT extends AssertJSwingJUnitTestCase {
+public class SchedulerE2E extends AssertJSwingJUnitTestCase {
 
     private FrameFixture window;
 
@@ -27,14 +24,11 @@ public class SchedulerE2EIT extends AssertJSwingJUnitTestCase {
         EmployeeService service = new EmployeeService(repo);
         Controller controller = new Controller(service);
 
-        SchedulerFrame frame = GuiActionRunner.execute(new GuiQuery<SchedulerFrame>() {
-            @Override
-            protected SchedulerFrame executeInEDT() {
-                SchedulerFrame f = new SchedulerFrame(controller);
-                f.setName("mainFrame");
-                f.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-                return f;
-            }
+        SchedulerFrame frame = GuiActionRunner.execute(() -> {
+            SchedulerFrame f = new SchedulerFrame(controller, 0);
+            f.setName("mainFrame");
+            f.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+            return f;
         });
 
         window = new FrameFixture(robot(), frame);
@@ -47,8 +41,7 @@ public class SchedulerE2EIT extends AssertJSwingJUnitTestCase {
     }
 
     @Test
-    public void frame_is_visible() {
-        JFrame f = (JFrame) window.target();
-        assertThat(f.isShowing()).isTrue();
+    void frame_is_visible() {
+        assertThat(window.target().isShowing()).isTrue();
     }
 }
