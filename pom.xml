@@ -109,6 +109,7 @@
       <version>${assertj.swing.version}</version>
       <scope>test</scope>
     </dependency>
+    
 
     <!-- Testcontainers -->
     <dependency>
@@ -155,6 +156,13 @@
           <release>${java.version}</release>
         </configuration>
       </plugin>
+      <!-- SonarQube / SonarCloud plugin -->
+<plugin>
+  <groupId>org.sonarsource.scanner.maven</groupId>
+  <artifactId>sonar-maven-plugin</artifactId>
+  <version>3.9.1.2184</version>
+</plugin>
+
 
       <!-- Unit Tests -->
       <plugin>
