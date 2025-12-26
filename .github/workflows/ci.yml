@@ -22,7 +22,9 @@ jobs:
           - 27017:27017
         options: >-
           --health-cmd="mongosh --eval 'db.adminCommand(\"ping\")'"
-          --health-interval=10s --health-timeout=5s --health-retries=5
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
 
     steps:
       - name: Checkout repository
@@ -43,53 +45,46 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-m2-
 
-      - name: Install Xvfb (virtual X server required for Swing GUI tests)
+      - name: Install Xvfb (required for Swing GUI tests)
         run: |
           sudo apt-get update -y
           sudo apt-get install -y xvfb
 
       - name: Start Xvfb and set DISPLAY
         run: |
-          echo "Starting Xvfb on :99"
           Xvfb :99 -screen 0 1920x1080x24 >/dev/null 2>&1 &
           echo "DISPLAY=:99" >> $GITHUB_ENV
 
-      - name: Confirm DISPLAY (debug)
-        run: |
-          echo "DISPLAY is $DISPLAY"
-          cat $GITHUB_ENV || true
-
-      - name: Build and run tests (includes GUI tests)
+      - name: Build and run tests
         env:
           MAVEN_OPTS: -Xmx2g
-        run: mvn -B -Djava.awt.headless=false -DskipTests=false clean verify
+        run: mvn -B -Djava.awt.headless=false clean verify
 
       - name: Generate JaCoCo report
         run: mvn -B jacoco:report
 
-      - name: SonarCloud analysis (runs only if SONAR_TOKEN present)
+      - name: SonarCloud analysis (only if token exists)
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
-          if [ -n "${SONAR_TOKEN}" ]; then
-            echo "SONAR_TOKEN present — running SonarCloud analysis"
+          if [ -n "$SONAR_TOKEN" ]; then
             mvn -B -DskipTests=true sonar:sonar \
               -Dsonar.projectKey=perkashlal_employee-shift \
               -Dsonar.organization=perkashlal \
               -Dsonar.host.url=https://sonarcloud.io \
-              -Dsonar.login=${SONAR_TOKEN}
+              -Dsonar.login=$SONAR_TOKEN
           else
-            echo "SONAR_TOKEN not set — skipping SonarCloud analysis"
+            echo "SONAR_TOKEN not set — skipping SonarCloud"
           fi
 
   mutation:
-    name: Mutation Testing (PIT) — run on master only
+    name: Mutation Testing (PIT)
     runs-on: ubuntu-latest
     needs: build-test
     if: github.ref == 'refs/heads/master'
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up JDK 17
@@ -98,8 +93,5 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - name: Run PIT mutation testing (focused on service layer)
-        run: mvn org.pitest:pitest-maven:mutationCoverage \
-               -Dpit.targetClasses=it.unifi.attsw.service.* \
-               -Dwt=2 \
-               -Dmutators=DEFAULTS
+      - name: Run PIT mutation testing
+        run: mvn org.pitest:pitest-maven:mutationCoverage -Dpit.targetClasses=it.unifi.attsw.service.* -Dmutators=DEFAULTS -Dthreads=2
