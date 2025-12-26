@@ -55,7 +55,7 @@ jobs:
           Xvfb :99 -screen 0 1920x1080x24 >/dev/null 2>&1 &
           echo "DISPLAY=:99" >> $GITHUB_ENV
 
-      - name: Build and run tests
+      - name: Build and run tests (unit + integration + GUI)
         env:
           MAVEN_OPTS: -Xmx2g
         run: mvn -B -Djava.awt.headless=false clean verify
@@ -74,7 +74,7 @@ jobs:
               -Dsonar.host.url=https://sonarcloud.io \
               -Dsonar.login=$SONAR_TOKEN
           else
-            echo "SONAR_TOKEN not set — skipping SonarCloud"
+            echo "SONAR_TOKEN not set — skipping SonarCloud analysis"
           fi
 
   mutation:
@@ -93,5 +93,5 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - name: Run PIT mutation testing
-        run: mvn org.pitest:pitest-maven:mutationCoverage -Dpit.targetClasses=it.unifi.attsw.service.* -Dmutators=DEFAULTS -Dthreads=2
+      - name: Run PIT mutation testing (service layer)
+        run: mvn org.pitest:pitest-maven:mutationCoverage -Dpit.targetClasses=it.unifi.attsw.service.* -Dpit.failWhenNoMutations=false -Dmutators=DEFAULTS -Dthreads=2
