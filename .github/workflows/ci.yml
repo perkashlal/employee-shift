@@ -83,10 +83,11 @@ jobs:
           fi
 
   mutation:
-    name: Mutation Testing (PIT) — run on main only
+    name: Mutation Testing (PIT) — run on master only
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
     needs: build-test
+    if: github.ref == 'refs/heads/master'
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -98,7 +99,7 @@ jobs:
           java-version: 17
 
       - name: Run PIT mutation testing (focused on service layer)
-        run: mvn -DskipTests=false org.pitest:pitest-maven:mutationCoverage \
+        run: mvn org.pitest:pitest-maven:mutationCoverage \
                -Dpit.targetClasses=it.unifi.attsw.service.* \
                -Dwt=2 \
                -Dmutators=DEFAULTS
