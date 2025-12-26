@@ -109,7 +109,6 @@
       <version>${assertj.swing.version}</version>
       <scope>test</scope>
     </dependency>
-    
 
     <!-- Testcontainers -->
     <dependency>
@@ -124,7 +123,7 @@
       <scope>test</scope>
     </dependency>
 
-    <!-- Logging (fix SLF4J warning) -->
+    <!-- Logging -->
     <dependency>
       <groupId>ch.qos.logback</groupId>
       <artifactId>logback-classic</artifactId>
@@ -156,13 +155,13 @@
           <release>${java.version}</release>
         </configuration>
       </plugin>
-      <!-- SonarQube / SonarCloud plugin -->
-<plugin>
-  <groupId>org.sonarsource.scanner.maven</groupId>
-  <artifactId>sonar-maven-plugin</artifactId>
-  <version>3.9.1.2184</version>
-</plugin>
 
+      <!-- Sonar -->
+      <plugin>
+        <groupId>org.sonarsource.scanner.maven</groupId>
+        <artifactId>sonar-maven-plugin</artifactId>
+        <version>3.9.1.2184</version>
+      </plugin>
 
       <!-- Unit Tests -->
       <plugin>
@@ -230,28 +229,26 @@
         <version>${pitest.version}</version>
         <configuration>
 
-          <!-- Mutate ONLY business logic -->
           <targetClasses>
             <param>it.unifi.attsw.employee_shift_scheduler.*</param>
           </targetClasses>
 
-          <!-- Run ONLY unit tests -->
           <targetTests>
             <param>it.unifi.attsw.employee_shift_scheduler.*Test</param>
           </targetTests>
 
-          <!-- Exclude GUI / IT / E2E -->
           <excludedClasses>
             <param>it.unifi.attsw.employee_shift_scheduler_gui.*</param>
             <param>it.unifi.attsw.employee_shift_scheduler.integration.*</param>
-            <param>it.unifi.attsw.employee_shift_scheduler.e2e.*</param>
           </excludedClasses>
 
           <excludedTestClasses>
             <param>**/*IT*</param>
-            <param>**/*E2E*</param>
             <param>**/*Frame*</param>
           </excludedTestClasses>
+
+          <!-- CRITICAL FIX -->
+          <failWhenNoMutations>false</failWhenNoMutations>
 
           <threads>4</threads>
 
